@@ -1,0 +1,15 @@
+div.flex-container-user-menu {
+    display: flex;
+}
+
+div.flex-child-avatar {
+    flex: 0 0 20%;
+}
+
+div.flex-child-username {
+    flex: 0 0 60%;
+}
+
+#link-main:hover {
+    text-transform: none;
+}

@@ -1,0 +1,16 @@
+/* Close button for the dialogs */
+#new-group-form-dialog-close-button {
+    position: absolute;
+    right: 1px;
+    top: 1px;
+}
+
+/* Workaround to remove additional input box appearing for some reason? */
+#group-name-text-field {
+    border: 0px solid black;
+}
+
+#stepper-button {
+    text-transform: none;
+    margin: 0 5px;
+}

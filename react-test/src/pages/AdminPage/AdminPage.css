@@ -1,0 +1,44 @@
+li.user-item {
+    font-size: 20px;
+    margin: 10px;
+}
+
+button.delete-user-button {
+    background-color: green;
+    color: white;
+    font-size: 16px;
+    margin: 2px;
+    text-align: center;
+    border-radius: 10px;
+    opacity: 0.8;
+}
+
+button.delete-user-button:hover {
+    opacity: 1;
+}
+
+div.user-block {
+    display: inline;
+}
+
+div.admin-container {
+    margin-left: 20px;
+}
+
+div.back-to-home-admin {
+    font-size: 25px;
+}
+
+button.logout-button-admin {
+    background-color: #6495ED;
+    color: white;
+    font-size: 20px;
+    opacity: 0.8;
+    padding: 2px 5px;
+    margin: 10px;
+    border-radius: 10px;
+}
+
+button.logout-button:hover {
+    opacity: 1;
+}

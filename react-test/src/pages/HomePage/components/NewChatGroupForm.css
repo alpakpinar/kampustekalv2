@@ -1,0 +1,62 @@
+div.new-group-form-div {
+    /* border: 3px solid black; */
+    width: 60%;
+    padding: 20px;
+    margin: auto;
+}
+
+div.new-group-form-div form label {
+    font-size: 20px;
+    padding: 20px;
+}
+
+div.group-type-checkbox {
+    margin: 10px;
+}
+
+div.group-type-checkbox-item {
+    padding: 5px;
+    display: inline;
+}
+
+input.form-checkbox {
+    height: 15px;
+    width: 15px;
+    background-color: #eee;
+}
+
+input.form-checkbox:hover {
+    cursor: pointer;
+}
+
+.new-form-checkbox {
+    height: 25px;
+    width: 25px;
+    border: 3px solid black;
+}
+
+input.form-checkbox:checked {
+    background-color: #2196F3;
+}
+
+div.contact-checkbox {
+    margin: 10px;
+}
+
+div.contact-checkbox-item {
+    padding: 5px;
+}
+
+button.new-group-form-submit-button {
+    background-color: cornflowerblue;
+    color: white;
+    padding: 10px;
+    margin: 10px;
+    font-size: 20px;
+    opacity: 0.8;
+}
+
+button.new-group-form-submit-button:hover {
+    opacity: 1;
+    cursor: pointer;
+}

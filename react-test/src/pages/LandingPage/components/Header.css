@@ -1,0 +1,64 @@
+h1.greeting {
+    font-size: 45px;
+    text-align: center;
+    color: white;
+    padding-top: 2em;
+    margin-top: 0;
+    margin-bottom: 20px;
+}
+
+p.greeting {
+    font-size: 25px;
+    text-align: center;
+    color: black;
+    margin-top: 10px;
+}
+
+div.register-login-button-container {
+    text-align: center;
+    margin: auto;
+    width: 100%;
+    display: inline-block;
+}
+
+.home-nav-item {
+    text-decoration: none;
+    color: white;
+}
+
+.header-button {
+    font-size: 25px;
+    background-color: #111111;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+
+    display: inline;
+    margin: 1em;
+    padding: 10px;
+    border-radius: 20px;
+    width: 15%;
+    opacity: 0.85;
+}
+
+.header-button:hover {
+    opacity: 1;
+    cursor: pointer;
+}
+
+#signIn {
+    background-color: #111111;
+}
+
+#login-button {
+    background-color: #5f5f5f;
+}
+
+#hidden {
+    visibility: hidden;
+    margin: 2em;
+}
+
+#header {
+    background-color: #6495ED;
+}
