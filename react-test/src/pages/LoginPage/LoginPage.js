@@ -1,5 +1,5 @@
-import React from 'react'
-import {Redirect} from 'react-router-dom'
+import React, { useState } from 'react'
+import {Redirect, useHistory} from 'react-router-dom'
 import HomePageHeader from '../HomePage/components/HomePageHeader'
 
 import Avatar from '@material-ui/core/Avatar'
@@ -13,13 +13,15 @@ import Grid from '@material-ui/core/Grid'
 import Box from '@material-ui/core/Box'
 import LockOutlinedIcon from '@material-ui/icons/LockOutlined'
 import Typography from '@material-ui/core/Typography'
-import { withStyles } from '@material-ui/core/styles'
 import Container from '@material-ui/core/Container'
 import CircularProgress from '@material-ui/core/CircularProgress'
 
-import { db } from '../../services/firebase'
+import { makeStyles } from '@material-ui/core/styles'
 
-const useStyles = (theme) => ({
+import { db, auth } from '../../services/firebase'
+import firebase from 'firebase'
+
+const useStyles = makeStyles((theme) => ({
     paper: {
         marginTop: theme.spacing(8),
         display: 'flex',
@@ -40,191 +42,118 @@ const useStyles = (theme) => ({
         fontSize: "18px"
     },
 })
+)
 
-class LoginPage extends React.Component {
-    constructor(props) {
-        super(props)
-        this.state = {
-            username: '',
-            password: '',
-            loginStatus: null,
-            loginAttempt: false
-        }
+export default function LoginPage(props) {
+    const classes = useStyles()
 
-        this.handleSubmit = this.handleSubmit.bind(this)
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+    const [loginStatus, setLoginStatus] = useState('')
+    const [loginAttempt, setLoginAttempt] = useState(false)
+
+    let history = useHistory()
+
+    const currentUser = auth.currentUser
+    // if (currentUser) {
+        // return <Redirect to="/home" /> 
+    // }
+
+    async function handleSubmit(event) {
+        event.preventDefault()
+        setLoginAttempt(true)
+        await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+            .then(() => {
+                return auth.signInWithEmailAndPassword(email, password)
+            })
+            .catch((error) => {
+                setLoginStatus('failed')
+                setLoginAttempt(false)
+            })
+        setLoginStatus('success')
+        // Redirect to the home page of the user upon successful login
+        history.push('/home')
+
     }
 
-    setUsername(username) {
-        this.setState({username: username})
-    }
-
-    setPassword(password) {
-        this.setState({password: password})
-    }
-
-    saveTokenToLocalStorage(token) {
-        /* To be used when user checks the "remember me" box */
-        localStorage.setItem('token', JSON.stringify(token))
-    }
-
-    async loginUser(credentials) {
-        return fetch('/api/login', {
-            method: 'POST',
-            body: JSON.stringify(credentials),
-            headers: {
-                'Content-Type' : 'application/json'
-            }
-        })
-        .then(response => response.json())
-    }
-
-    async handleSubmit(e) {
-        e.preventDefault();
-        this.setState({loginAttempt: true})
-
-        ////////////////
-        //// TEST //////
-        ////////////////
-        let validLogin = false
-        await db.ref(`users/${this.state.username}`).once('value').then(snapshot => {
-            if (snapshot.exists()) {
-                const snapshotVal = snapshot.val()
-                const username = snapshotVal.username
-                const password = snapshotVal.password
-                if ((username === this.state.username) && (password === this.state.password)) {
-                    validLogin = true
-                }
-        }
-    })
-
-    if (!validLogin) {
-        this.setState({loginStatus: 'failed'})
-    }
-    else {
-        const userToken = {
-            token: Math.random().toString(32).substring(7),
-            username: this.state.username
-        }
-        this.props.setToken(userToken)
-        // Reload the page with the token saved, so that we get redirected to the home page of the user
-        window.location.reload()
-    }
-    this.setState({loginAttempt: false})
-
-
-        ////////////////
-
-    //     const response = await this.loginUser({
-    //         username: this.state.username,
-    //         password: this.state.password
-    //     });
-    //     if (response.message === 'logged-in') {
-    //         const userToken = {
-    //             token: response.token,
-    //             username: response.username
-    //         } 
-    //         this.props.setToken(userToken)
-    //         // If "remember me" box is checked, save the token into the local storage as well so that it will be kept there
-    //         if (this.state.saveToLocalStorage) {
-    //             this.saveTokenToLocalStorage(userToken)
-    //         }
-
-    //         // Reload page so that we get redirected
-    //         window.location.reload()
-    //     }
-    //     else {
-    //         this.setState({loginStatus: 'failed'});
-    //     }
-    //     this.setState({loginAttempt: false})
-    }
-
-    render() {
-        const { classes } = this.props
-        if (this.props.getToken()) {
-            return <Redirect to="/home" />
-        }
-        return (
-            <div>
-                <HomePageHeader />
-                <Container component="main" maxWidth="xs">
-                    <CssBaseline />
-                    <div className={classes.paper}>
-                        <Avatar className={classes.avatar}>
-                            <LockOutlinedIcon></LockOutlinedIcon>
-                        </Avatar>
-                        <Typography component="h1" variant="h5">
-                            Giriş Yap
-                        </Typography>
-                    </div>
-                    <form className={classes.form} onSubmit={this.handleSubmit} noValidate>
-                        {/* Display error message in case of failed login */}
-                        {this.state.loginStatus !== 'failed' ? (
+    return (
+        <div>
+            <HomePageHeader />
+            <Container component="main" maxWidth="xs">
+                <CssBaseline />
+                <div className={classes.paper}>
+                    <Avatar className={classes.avatar}>
+                        <LockOutlinedIcon></LockOutlinedIcon>
+                    </Avatar>
+                    <Typography component="h1" variant="h5">
+                        Giriş Yap
+                    </Typography>
+                </div>
+                <form className={classes.form} onSubmit={handleSubmit} noValidate>
+                    {/* Display error message in case of failed login */}
+                    {loginStatus !== 'failed' ? (
+                    <TextField
+                        variant="outlined"
+                        margin="normal"
+                        fullWidth
+                        id="email"
+                        label="E-posta"
+                        name="email"
+                        autoFocus
+                        onChange={e => setEmail(e.target.value)}
+                    /> ) : (
                         <TextField
-                            variant="outlined"
-                            margin="normal"
-                            fullWidth
-                            id="username"
-                            label="Kullanıcı Adı"
-                            name="username"
-                            autoFocus
-                            onChange={e => this.setUsername(e.target.value)}
-                        /> ) : (
-                            <TextField
-                            error
-                            variant="outlined"
-                            helperText="Kullanıcı adı veya şifre yanlış. Lütfen tekrar deneyin."
-                            margin="normal"
-                            fullWidth
-                            id="username"
-                            label="Kullanıcı Adı"
-                            name="username"
-                            autoFocus
-                            onChange={e => this.setUsername(e.target.value)}
-                        /> 
+                        error
+                        variant="outlined"
+                        helperText="E-posta veya şifre yanlış. Lütfen tekrar deneyin."
+                        margin="normal"
+                        fullWidth
+                        id="email"
+                        label="E-posta"
+                        name="email"
+                        autoFocus
+                        onChange={e => setEmail(e.target.value)}
+                    /> 
 
-                        )}
-                        <TextField
-                            variant="outlined"
-                            margin="normal"
-                            fullWidth
-                            name="password"
-                            label="Şifre"
-                            type="password"
-                            id="password"
-                            autoComplete="current-password"
-                            onChange={e => this.setPassword(e.target.value)}
-                        />
-                        <FormControlLabel
-                            control={<Checkbox value="remember" color="primary" />}
-                            label="Beni hatırla"
-                        />
-                        <Button
-                            type="submit"
-                            fullWidth
-                            variant="contained"
-                            color="primary"
-                            className={classes.submit}
-                        >
-                            {this.state.loginAttempt ? <CircularProgress color="inherit" size={30} /> : "Giriş Yap" }
-                        </Button>
-                        <Grid container>
-                            <Grid item xs>
-                            <Link href="#" variant="body2">
-                                Şifreni mi unuttun?
-                            </Link>
-                            </Grid>
-                            <Grid item>
-                            <Link href="/register" variant="body2">
-                                {"Hesabın yok mu? Kaydol"}
-                            </Link>
-                            </Grid>
+                    )}
+                    <TextField
+                        variant="outlined"
+                        margin="normal"
+                        fullWidth
+                        name="password"
+                        label="Şifre"
+                        type="password"
+                        id="password"
+                        autoComplete="current-password"
+                        onChange={e => setPassword(e.target.value)}
+                    />
+                    <FormControlLabel
+                        control={<Checkbox value="remember" color="primary" />}
+                        label="Beni hatırla"
+                    />
+                    <Button
+                        type="submit"
+                        fullWidth
+                        variant="contained"
+                        color="primary"
+                        className={classes.submit}
+                    >
+                        {loginAttempt ? <CircularProgress color="inherit" size={30} /> : "Giriş Yap" }
+                    </Button>
+                    <Grid container>
+                        <Grid item xs>
+                        <Link href="#" variant="body2">
+                            Şifreni mi unuttun?
+                        </Link>
                         </Grid>
-                    </form>
-                </Container>
-            </div>
-        )
-    }
-    
+                        <Grid item>
+                        <Link href="/register" variant="body2">
+                            {"Hesabın yok mu? Kaydol"}
+                        </Link>
+                        </Grid>
+                    </Grid>
+                </form>
+            </Container>
+        </div>
+    )
 }
-
-export default withStyles(useStyles)(LoginPage)

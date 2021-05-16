@@ -12,6 +12,8 @@ import Select from '@material-ui/core/Select'
 import MenuItem from '@material-ui/core/MenuItem'
 import FormHelperText from '@material-ui/core/FormHelperText'
 
+import Autocomplete from '@material-ui/lab/Autocomplete'
+
 import Radio from '@material-ui/core/Radio'
 import RadioGroup from '@material-ui/core/RadioGroup'
 import FormControlLabel from '@material-ui/core/FormControlLabel'
@@ -39,8 +41,12 @@ import CloseIcon from '@material-ui/icons/Close'
 import AddIcon from '@material-ui/icons/Add'
 import CheckCircleIcon from '@material-ui/icons/CheckCircle'
 import CircularProgress from '@material-ui/core/CircularProgress'
+import ChatIcon from '@material-ui/icons/Chat'
+
+import { createNotification } from '../../../helpers/createNotification'
 
 import { db } from '../../../services/firebase'
+import firebase from 'firebase'
 
 class RoomTheme extends React.Component {
     /* Re-usable room theme for different room types. */
@@ -68,17 +74,12 @@ class ContactTheme extends React.Component {
     }
 
     handleClick() {
-        const newContact = this.props.contact
-        const contactData = {
-            username: newContact.username,
-            _id: newContact._id
-        }
         // Add (or remove) the contact in the parent component's state
         if (!this.state.added) {
-            this.props.addContact(contactData)
+            this.props.addContact(this.props.contact)
         }
         else {
-            this.props.removeContact(contactData)
+            this.props.removeContact(this.props.contact)
         }
         // Set this component's state
         this.setState({
@@ -91,10 +92,10 @@ class ContactTheme extends React.Component {
             <div>
                 <ListItem>
                     <ListItemIcon>
-                        <Avatar>{this.props.contact.username[0].toUpperCase()}</Avatar>
+                        <Avatar>{this.props.contact[0].toUpperCase()}</Avatar>
                     </ListItemIcon>
                     <ListItemText>
-                        {this.props.contact.username}
+                        {this.props.contact}
                     </ListItemText>
                     <IconButton onClick={this.handleClick}>
                         {this.state.added ? <CheckCircleIcon /> : <AddIcon />}
@@ -110,9 +111,26 @@ class RoomThemeStep extends React.Component {
     constructor(props) {
         super(props)
         this.state = {
-            activeRadioButtonName: "Kulüp"
+            activeRadioButtonName: "Tematik",
+            selectedTheme: null
         }
         this.handleChange = this.handleChange.bind(this)
+        this.handleClick = this.handleClick.bind(this)
+    }
+
+    handleClick(e) {
+        if (this.props.groupType === e.currentTarget.value) {
+            this.props.setGroupType(null)
+        }
+        else {
+            this.props.setGroupType(e.currentTarget.value)
+        }
+        if (this.state.selectedTheme === e.currentTarget.value) {
+            this.setState({selectedTheme: null})
+        }
+        else {
+            this.setState({selectedTheme: e.currentTarget.value})
+        }
     }
 
     handleChange(e) {
@@ -146,10 +164,10 @@ class RoomThemeStep extends React.Component {
                 label: "Spor",
                 desc: "Spor ile ilgili muhabbetler için bir oda."
             },
-            "Gündem" : {
-                icon: <EventIcon></EventIcon>,
-                label: "Gündem",
-                desc: "En yeni gelişmelerin tartışıldığı oda."
+            "Tematik" : {
+                icon: <ChatIcon></ChatIcon>,
+                label: "Tematik",
+                desc: "Sosyal odalar."
             },
         }
         const theme = mapping[roomtheme]
@@ -157,16 +175,32 @@ class RoomThemeStep extends React.Component {
     }
 
     render() {
+        const buttonStyle = {textTransform: "none"}
         return (
             <div>
                 <h2>Grubuna bir tema bulalım</h2>
                 <p>Grubun için aşağıdaki hazır temalardan birini seçebilirsin:</p>
                 <RadioGroup id="group-type-selection" aria-label="Grup tipi" value={this.state.activeRadioButtonName} onKeyPress={this.handleChange} onChange={this.handleChange}>
+                    <FormControlLabel value="Tematik" control={<Radio />} label={this.getRoomLabelElement("Tematik")} />
+                    <Box display="flex" width={1} mx="auto" mb={1} justifyContent="center">
+                        <Box mx={2}>
+                            <Button color="primary" variant={this.state.selectedTheme === 'Giybet' ? "contained" : "outlined"} value="Giybet" style={buttonStyle} onClick={this.handleClick}>
+                                #Gıybet
+                            </Button>
+                        </Box>
+                        <Box mx={2}>
+                            <Button color="secondary" variant={this.state.selectedTheme === 'Ask' ? "contained" : "outlined"} value="Ask" style={buttonStyle} onClick={this.handleClick}>
+                                #Aşk
+                            </Button>
+                        </Box>
+                        <Box mx={2}>
+                            <Button variant={this.state.selectedTheme === 'Spor' ? "contained" : "outlined"} value="Spor" style={buttonStyle} onClick={this.handleClick}>
+                                #Spor
+                            </Button>
+                        </Box>
+                    </Box>
                     <FormControlLabel value="Kulüp" control={<Radio />} label={this.getRoomLabelElement("Kulüp")} />
                     <FormControlLabel value="Ders" control={<Radio />} label={this.getRoomLabelElement("Ders")} />
-                    <h3>Sosyal gruplar</h3>
-                    <FormControlLabel value="Spor" control={<Radio />} label={this.getRoomLabelElement("Spor")}/> 
-                    <FormControlLabel value="Gündem" control={<Radio />} label={this.getRoomLabelElement("Gündem")}/> 
                 </RadioGroup>
                 <br></br>
             </div>
@@ -256,10 +290,36 @@ class ContactsStep extends React.Component {
     constructor(props) {
         super(props)
         this.state = {
+            allContactsForSearch: [],
+            usernamesToDisplay: this.props.contacts,
             addedContacts: []
         }
         this.addContact = this.addContact.bind(this)
         this.removeContact = this.removeContact.bind(this)
+        this.handleSearch = this.handleSearch.bind(this)
+    }
+
+    componentDidMount() {
+        // Fetch all users from the database
+        db.ref('users').once('value', snapshot => {
+            if (snapshot.exists()) {
+                const data = snapshot.val()
+                const usernames = Object.keys(data).filter(username => username !== this.props.currentUser)
+                this.setState({allContactsForSearch: usernames})
+            }
+        })
+    }
+
+    handleSearch(e) {
+        if (e.keyCode === 13) {
+            const username = e.target.value
+            let usernamesToDisplay = this.props.contacts
+            // From the current list of "all contacts", find the ones matching to what we're looking for
+            if (username.trim() !== '') {
+                usernamesToDisplay = this.state.allContactsForSearch.filter(uname => uname === username)
+                this.setState({usernamesToDisplay: usernamesToDisplay})
+            }
+        }
     }
 
     addContact(newContact) {
@@ -289,8 +349,20 @@ class ContactsStep extends React.Component {
             <div>
                 <h2>Grubuna arkadaşlarını ekle</h2>
                 <p>Grubuna aşağıdaki bağlantılarını seçerek ekleyebilirsin:</p>
+                <Autocomplete 
+                    id="contact-search"
+                    popupIcon={null}
+                    noOptionsText="Kullanıcı bulunamadı"
+                    options={this.state.allContactsForSearch}
+                    getOptionLabel={user => user}
+                    autoComplete={true}
+                    clearOnEscape={true}
+                    renderInput={(params) => <TextField {...params} label="Kullanıcı ara" variant="outlined" />}
+                    onKeyDown={this.handleSearch}
+                />
+                {/* TODO: Probably want some sort of scroll / max height here */}
                 <List onKeyPress={this.props.handleNext}>
-                    {this.props.contacts.map(contact => {
+                    {this.state.usernamesToDisplay.map(contact => {
                         return (
                             <ContactTheme contact={contact} addContact={this.addContact} removeContact={this.removeContact} />
                         )
@@ -316,7 +388,11 @@ class NewChatGroupFormStepper extends React.Component {
     getStepContent(step) {
         switch(step) {
             case 0:
-                return <RoomThemeStep setGroupType={this.props.setGroupType} handleNext={this.props.handleNext} />
+                return <RoomThemeStep 
+                        groupType={this.props.groupType}
+                        setGroupType={this.props.setGroupType} 
+                        handleNext={this.props.handleNext} 
+                        />
             case 1:
                 return <RoomNameStep setGroupName={this.props.setGroupName}
                                      setClassSemester={this.props.setClassSemester} 
@@ -328,7 +404,8 @@ class NewChatGroupFormStepper extends React.Component {
                                      groupType={this.props.groupType}
                                      />
             case 2:
-                return <ContactsStep contacts={this.props.contacts} 
+                return <ContactsStep currentUser={this.props.currentUser}
+                                     contacts={this.props.contacts} 
                                      setContactList={this.props.setContactList} 
                                      handleNext={this.props.handleNext} />
             case 3:
@@ -362,10 +439,9 @@ class NewChatGroupDialog extends React.Component {
         this.state = {
             activeStep: 0,
             err: -1,
-            show: this.props.show,
             groupType: "Kulüp",
             groupName: "",
-            contacts: [this.props.username],
+            contacts: [],
             universityOfUser: this.props.universityOfUser, // Relevant for class/student club related rooms
             classSemester: '', // Relevant for class related rooms
             submitted: false
@@ -390,10 +466,7 @@ class NewChatGroupDialog extends React.Component {
     }
 
     handleClose() {
-        this.setState({
-            show: false
-        })
-        this.props.setActiveTab('')
+        this.props.handleCloseDialog('newChatGroup')
     }
 
     handleBack() {
@@ -425,6 +498,13 @@ class NewChatGroupDialog extends React.Component {
                 return
             }
         }
+        // In this step, check that a group type is actually selected
+        if (this.state.activeStep === 0) {
+            if (!this.state.groupType) {
+                this.setState({err: 0})
+                return
+            }
+        }
         this.setState({
             ...this.state,
             activeStep: this.state.activeStep + 1
@@ -434,7 +514,10 @@ class NewChatGroupDialog extends React.Component {
     async handleSubmit() {
         /* Handle form submission. */
         const roomData = {
+            name: this.state.groupName,
             type: this.state.groupType,
+            creationTime: firebase.database.ServerValue.TIMESTAMP,
+            latestMsgTime: firebase.database.ServerValue.TIMESTAMP,
         }
 
         if (this.state.groupType === 'Ders') {
@@ -444,24 +527,35 @@ class NewChatGroupDialog extends React.Component {
 
         roomData['typingIndicator'] = {}
 
-        for (let idx=0; idx < this.state.contacts.length; idx++) {
-            roomData['typingIndicator'][ this.state.contacts[idx] ] = false
+        // Add the current user to the members of this group
+        let contacts = this.state.contacts
+        contacts.push(this.props.username)
+
+        for (let idx=0; idx < contacts.length; idx++) {
+            roomData['typingIndicator'][ contacts[idx] ] = false
         }
 
         await db.ref(`rooms/${this.state.groupName}`).set(roomData)
 
-        for (let idx=0; idx < this.state.contacts.length; idx++) {
-            await db.ref(`users/${this.state.contacts[idx]}/chats`).push().set({
-                name: this.state.groupName
-            })
+        let memberUpdate = {}
+
+        for (let idx=0; idx < contacts.length; idx++) {
+            await db.ref(`users/${contacts[idx]}/chats/${this.state.groupName}`).set(true)
+
+            memberUpdate[ contacts[idx] ] = true
         }
+        
+        await db.ref(`members/${this.state.groupName}`).set(memberUpdate)
 
         // Close the dialog once the group is formed
         this.setState({submitted: false})
         this.handleClose()
 
-        // Not a great solution, but simply reload the page for now so that the new chat room appears
-        window.location.reload()
+        // Update chats list
+        this.props.reloadFunc()
+
+        const notificationMsg = `${this.state.groupName} grubu oluşturuldu!`
+        createNotification(notificationMsg)
     }
 
     setGroupType(dataFromChild) {
@@ -505,10 +599,11 @@ class NewChatGroupDialog extends React.Component {
     render() {
         return (
             <div>
-                <Dialog open={this.state.show} onClose={this.handleClose}>
+                <Dialog open={this.props.show} onClose={this.handleClose}>
                     <DialogTitle id="form-dialog-title">Yeni Grup Oluştur</DialogTitle>
                     <DialogContent>
-                        <NewChatGroupFormStepper 
+                        <NewChatGroupFormStepper
+                                currentUser={this.props.username} 
                                 universityOfUser={this.props.universityOfUser} 
                                 contacts={this.props.contacts} 
                                 groupName={this.state.groupName}

@@ -1,5 +1,5 @@
 import React from 'react'
-import './HomePageHeader.css'
+// import './HomePageHeader.css'
 
 import { makeStyles } from '@material-ui/core/styles'
 
@@ -18,7 +18,10 @@ import Button from '@material-ui/core/Button'
 import Box from '@material-ui/core/Box'
 import Link from '@material-ui/core/Link'
 
-import NotificationsIcon from '@material-ui/icons/Notifications'
+import NotificationMenu from './NotificationMenu'
+
+import firebase from 'firebase'
+import { db } from '../../../services/firebase'
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -34,7 +37,7 @@ const useStyles = makeStyles((theme) => ({
       flexGrow: 1,
     },
   }));
-  
+
   export default function HomePageHeader(props) {
     const classes = useStyles();
     const [anchorEl, setAnchorEl] = React.useState(null);
@@ -81,14 +84,13 @@ const useStyles = makeStyles((theme) => ({
       <div className={classes.root}>
         <AppBar position="static" className={classes.appbar}>
           <Toolbar>
-            <IconButton edge="start" className={classes.menuButton} color="inherit" aria-label="menu">
-              <MenuIcon />
-            </IconButton>
-            <Typography variant="h6" className={classes.title}>
-              <Link id="link-main" href="/" color="inherit" style={{textDecoration: "none"}} >
-                KampüsteKal
-              </Link>
-            </Typography>
+            <Box ml={1}>
+              <Typography variant="h6" className={classes.title}>
+                <Link id="link-main" href="/" color="inherit" style={{textDecoration: "none"}} >
+                  KampüsteKal
+                </Link>
+              </Typography>
+            </Box>
             <Box style={menuDivStyle}>
               <Box style={menuBoxStyle}>
                 <Button color="inherit" style={menuButtonStyle}>KampüsteKal</Button>
@@ -101,7 +103,7 @@ const useStyles = makeStyles((theme) => ({
                 <Box p={1.25}>
                   <Typography>{props.username}</Typography>
                 </Box>
-                <Box>
+                <Box display="flex" flexDirection="row">
                 <IconButton
                     aria-label="account of current user"
                     aria-controls="menu-appbar"
@@ -111,6 +113,12 @@ const useStyles = makeStyles((theme) => ({
                   >
                     <AccountCircle />
                   </IconButton>
+                  <NotificationMenu 
+                      username={props.username} 
+                      notifications={props.notifications} 
+                      setActiveTab={props.setActiveTab} 
+                      fetchContactsAndChats={props.fetchContactsAndChats}
+                      />
                   <Menu
                     id="menu-appbar"
                     style={{

@@ -1,11 +1,11 @@
-div.new-group-form-div {
+/* div.new-group-form-div { */
     /* border: 3px solid black; */
-    width: 60%;
+    /* width: 60%;
     padding: 20px;
     margin: auto;
-}
+} */
 
-div.new-group-form-div form label {
+/* div.new-group-form-div form label {
     font-size: 20px;
     padding: 20px;
 }
@@ -59,4 +59,4 @@ button.new-group-form-submit-button {
 button.new-group-form-submit-button:hover {
     opacity: 1;
     cursor: pointer;
-}
+} */

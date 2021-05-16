@@ -4,8 +4,12 @@ import './HomePage.css'
 
 import ChatRoom from './components/ChatRoom'
 import NewChatGroupDialog from './components/NewChatGroupDialog'
-import ProfileLandingPage from './components/ProfileLandingPage'
+import FriendSearchDialog from './components/FriendSearchDialog'
+import GroupSearchPage from './components/GroupSearchPage'
 import HomePageHeader from './components/HomePageHeader'
+import FriendAdditionSnackbar from './components/FriendAdditionSnackbar'
+import UserContextMenu from './components/UserContextMenu'
+import LoadingPage from './components/LoadingPage'
 
 import List from '@material-ui/core/List'
 import ListItem from '@material-ui/core/ListItem'
@@ -14,10 +18,11 @@ import ListItemText from '@material-ui/core/ListItemText'
 import Divider from '@material-ui/core/Divider'
 import Collapse from '@material-ui/core/Collapse'
 
-import ExpandLess from '@material-ui/icons/ExpandLess';
-import ExpandMore from '@material-ui/icons/ExpandMore';
+import ExpandLess from '@material-ui/icons/ExpandLess'
+import ExpandMore from '@material-ui/icons/ExpandMore'
 import ChatIcon from '@material-ui/icons/Chat'
 import AnnouncementIcon from '@material-ui/icons/Announcement'
+import ExploreIcon from '@material-ui/icons/Explore'
 import ContactsIcon from '@material-ui/icons/Contacts'
 import SearchIcon from '@material-ui/icons/Search'
 import AddIcon from '@material-ui/icons/Add'
@@ -26,14 +31,26 @@ import QuestionAnswerIcon from '@material-ui/icons/QuestionAnswer'
 import PersonIcon from '@material-ui/icons/Person'
 import AddAlertIcon from '@material-ui/icons/AddAlert'
 
-import { db } from '../../services/firebase'
+import { ChatItem } from 'react-chat-elements'
+
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
+import { createNotification } from '../../helpers/createNotification'
+
+import { db, auth } from '../../services/firebase'
 
 class NestedList extends React.Component {
     /* Reusable nested/collapsable list for left-hand side navigation bar. */
     constructor(props) {
         super(props)
+        this.state = {
+            selectedUser: null,
+            anchorForUserMenu: null
+        }
         this.handleClick = this.handleClick.bind(this)
-        this.renderIcon = this.renderIcon.bind(this)
+        this.handleContextMenu = this.handleContextMenu.bind(this)
+        this.handleCloseContextMenu = this.handleCloseContextMenu.bind(this)
+        this.onClickToMenuItem = this.onClickToMenuItem.bind(this)
     }
 
     handleClick(e) {
@@ -42,29 +59,63 @@ class NestedList extends React.Component {
         this.props.setActiveTab(parent.id)
     }
 
-    renderIcon() {
-        if (this.props.type === 'chatroom') {
-            return <QuestionAnswerIcon></QuestionAnswerIcon>
+    handleContextMenu(e) {
+        /* Right-click on the list items. */
+        e.preventDefault()
+        const parent = e.target.closest('.list-item-div')
+        if (!parent.id.startsWith('dm')) {
+            return
         }
-        else if (this.props.type === 'contact') {
-            return <PersonIcon></PersonIcon>
-        }
-        else if (this.props.type === 'announcement') {
-            return <AddAlertIcon></AddAlertIcon>
-        }
-     }
+        // Get the selected username
+        let temp = parent.id.replace('dm-','').split('-')
+        const selectedUser = temp.filter(username => username !== this.props.currentUser)[0]
+        this.setState({
+            selectedUser: selectedUser, 
+            anchorForUserMenu: e.target
+        })
+    }
+    
+    onClickToMenuItem() {
+        this.handleCloseContextMenu()
+        this.props.handleRemoveContact(this.state.selectedUser)
+    }
+
+    handleCloseContextMenu() {
+        this.setState({anchorForUserMenu: null})
+    }
 
     render() {
         return (
             <Collapse in={this.props.show}>
                 <List component="div">
-                    {this.props.items.map(item => {
+                    {this.props.items.map((item, i) => {
+                        const id = this.props.type === 'contact' ? this.props.dmChannels[i] : item
+                        let displayMessage = this.props.latestMessagelist[id]
+                        let subtitleToDisplay = ''
+                        if (displayMessage) {
+                            subtitleToDisplay = this.props.type === 'contact' ? displayMessage.text : `${displayMessage.sender}: ${displayMessage.text}`
+                        }
                         return (
-                            <div className="list-item-div" id={item}>
-                                <ListItem button selected={item === this.props.activeTabId} style={{"padding-left": "35px"}} onClick={this.handleClick}>
-                                    <ListItemIcon>{this.renderIcon()}</ListItemIcon>
-                                    <ListItemText primary={item} />
-                                </ListItem>
+                            <div className="list-item-div" id={id}>
+                                <ChatItem 
+                                    avatarFlexible={true}
+                                    title={item}
+                                    subtitle={displayMessage ? subtitleToDisplay : "İlk mesajı sen yaz!"}
+                                    date={displayMessage ? displayMessage.timestamp : null}
+                                    // dateString={displayMessage ? format(Date.now() - displayMessage.timestamp, 'tr_locale') : ""}
+                                    unread={0}
+                                    onClick={this.handleClick}
+                                    onContextMenu={this.handleContextMenu}
+                                    // statusColor="red"
+                                    // statusColorType="encircle"
+                                    />
+                                
+                                {/* Menu on right click on chat item */}
+                                <UserContextMenu 
+                                    anchorEl={this.state.anchorForUserMenu} 
+                                    handleClose={this.handleCloseContextMenu} 
+                                    onClickToMenuItem={this.onClickToMenuItem} 
+                                    />
                             </div>
                         )
                     })}
@@ -92,6 +143,7 @@ class LeftNavigation extends React.Component {
         this.handleClickContacts = this.handleClickContacts.bind(this)
         this.handleClickNewGroup = this.handleClickNewGroup.bind(this)
         this.handleClickGroupSearch = this.handleClickGroupSearch.bind(this)
+        this.handleClickFriendSearch = this.handleClickFriendSearch.bind(this)
 
     }
 
@@ -129,13 +181,16 @@ class LeftNavigation extends React.Component {
     }
 
     handleClickNewGroup() {
-        const id = "new-group-form"
-        this.props.setActiveTab(id)
+        this.props.handleOpenDialog('newChatGroup')
     }
 
     handleClickGroupSearch() {
         const id = "group-search"
         this.props.setActiveTab(id)
+    }
+
+    handleClickFriendSearch() {
+        this.props.handleOpenDialog('friendSearch')
     }
 
     render() {
@@ -149,7 +204,15 @@ class LeftNavigation extends React.Component {
                         <ListItemText primary="Chat Odaları" />
                         {this.state.nests.chatroomsOpen ? <ExpandLess /> : <ExpandMore />}
                     </ListItem>
-                    <NestedList show={this.state.nests.chatroomsOpen} items={this.props.chatrooms} type="chatroom" setActiveTab={this.props.setActiveTab} activeTabId={this.props.activeTabId} /> 
+                    <NestedList 
+                        currentUser={this.props.currentUser}
+                        show={this.state.nests.chatroomsOpen} 
+                        items={this.props.chatrooms} 
+                        latestMessagelist={this.props.latestMessagelist}
+                        type="chatroom" 
+                        setActiveTab={this.props.setActiveTab} 
+                        activeTabId={this.props.activeTabId} 
+                        /> 
                     {/* <ListItem button onClick={this.handleClickAnnouncements}> */}
                         {/* <ListItemIcon> */}
                             {/* <AnnouncementIcon></AnnouncementIcon> */}
@@ -165,7 +228,15 @@ class LeftNavigation extends React.Component {
                         <ListItemText primary="Arkadaşlar" />
                         {this.state.nests.contactsOpen ? <ExpandLess /> : <ExpandMore />}
                     </ListItem>
-                    <NestedList show={this.state.nests.contactsOpen} items={this.props.contacts} type="contact" setActiveTab={this.props.setActiveTab} activeTabId={this.props.activeTabId} /> 
+                    <NestedList currentUser={this.props.currentUser}
+                                show={this.state.nests.contactsOpen} 
+                                items={this.props.contacts} 
+                                dmChannels={this.props.dmChannels} 
+                                latestMessagelist={this.props.latestMessagelist}
+                                type="contact" 
+                                setActiveTab={this.props.setActiveTab} 
+                                activeTabId={this.props.activeTabId} 
+                                handleRemoveContact={this.props.handleRemoveContact} /> 
                     <Divider />
                     <ListItem button onClick={this.handleClickGroupSearch} selected={this.props.activeTabId === "group-search"}>
                         <ListItemIcon>
@@ -173,17 +244,23 @@ class LeftNavigation extends React.Component {
                         </ListItemIcon>
                         <ListItemText primary="Keşfet" />
                     </ListItem>
-                    <ListItem button onClick={this.handleClickNewGroup} selected={this.props.activeTabId === "new-group-form"} >
+                    <ListItem button onClick={this.handleClickNewGroup}>
                         <ListItemIcon>
                             <CreateIcon></CreateIcon>
                         </ListItemIcon>
                         <ListItemText primary="Yeni Grup Oluştur" />
                     </ListItem>
-                    <ListItem button onClick={null}>
+                    <ListItem button onClick={this.handleClickFriendSearch}>
                         <ListItemIcon>
                             <AddIcon></AddIcon>
                         </ListItemIcon>
                         <ListItemText primary="Yeni Arkadaş Ekle" />
+                    </ListItem>
+                    <ListItem button onClick={null} selected={this.props.activeTabId === "random-chat"}>
+                        <ListItemIcon>
+                            <ExploreIcon></ExploreIcon>
+                        </ListItemIcon>
+                        <ListItemText primary="Rastgele Gruba Gir" />
                     </ListItem>
                 </List>
             </div>
@@ -204,26 +281,66 @@ class HomePage extends React.Component {
         }
         
         this.state = {
+            currentUser: auth.currentUser,
             username: username,
             name: '',
             university: '',
-            chat_rooms: [], // Initially empty, to be fetched from the database and updated as page loads
+            chatRoomList: [], // Initially empty, to be fetched from the database and updated as page loads
             contacts: [], // Initially empty, to be fetched from the database and updated as page loads
-            announcement_rooms: [
-                // {roomId: "a-room-1", name: "Staj", type: "announcement"},
-                // {roomId: "a-room-2", name: "Ev/Yurt", type: "announcement"},
-                "Staj", 
-                "Ev/Yurt",
-            ],
+            dmChannels: [], // Initially empty, to be fetched from the database and updated as page loads
+            notifications: [],
+            fetching: true,
+            // announcement_rooms: [
+            //     "Staj", 
+            //     "Ev/Yurt",
+            // ],
             activeTabId: 'group-search',
+            friendAdditionSnackbar: {
+                show: false,
+                message: ''
+            },
+            dialogs: {
+                friendSearch: false,
+                newChatGroup: false,
+            },
+            latestMessagelist: {}
         };
+
+        // Store a copy of the user data
+        localStorage.setItem('kkal-user-auth', JSON.stringify(auth.currentUser))
+
         this.isActiveTab = this.isActiveTab.bind(this)
         this.setActiveTab = this.setActiveTab.bind(this)
         this.renderMainSide = this.renderMainSide.bind(this)
         this.userLoggedIn = this.userLoggedIn.bind(this)
+        this.handleLogout = this.handleLogout.bind(this)
+        this.executeOnFriendAddition = this.executeOnFriendAddition.bind(this)
+        this.fetchContactsAndChats = this.fetchContactsAndChats.bind(this)
+        this.fetchLatestMessages = this.fetchLatestMessages.bind(this)
+        
+        this.setupListenersForMessages = this.setupListenersForMessages.bind(this)
+        this.sortBasedOnLatestMsgTimestamp = this.sortBasedOnLatestMsgTimestamp.bind(this)
+
+        this.handleRemoveContact = this.handleRemoveContact.bind(this)
+        this.handleOpenDialog = this.handleOpenDialog.bind(this)
+        this.handleCloseDialog = this.handleCloseDialog.bind(this)
     }
     
-    handleLogout(e) {
+    async handleRemoveContact(userBeingRemoved) {
+        /* Remove contacts in the database and reload list of contacts. */
+        await db.ref(`users/${this.state.currentUser.displayName}/contacts/${userBeingRemoved}`).set(null)
+        await db.ref(`users/${userBeingRemoved}/contacts/${this.state.currentUser.displayName}`).set(null)
+
+        this.fetchContactsAndChats()
+
+        const notificationMsg = `${userBeingRemoved} arkadaşlık listenden çıkarıldı!`
+        createNotification(notificationMsg)
+
+        // Delete the DM messages between these two contacts
+        // Continue here...
+    }
+
+    async handleLogout(e) {
         /* 
         Upon logout, remove the user tokens from the session and local storages.
         Token in local storage may or may not exist, but we still need to check there.
@@ -231,7 +348,11 @@ class HomePage extends React.Component {
         e.preventDefault();
         sessionStorage.removeItem('token');
         localStorage.removeItem('token');
-        window.location.reload();
+        await db.ref(`users/${this.state.currentUser.displayName}/loggedIn`).set(false)
+
+        auth.signOut().then(() => {
+            window.location.reload()
+        })
     }
 
     userLoggedIn() {
@@ -258,29 +379,167 @@ class HomePage extends React.Component {
         this.setState({activeTabId: tabid});
     }
 
-    componentDidMount() {
-        /* Collect the necessary data about the user: Full name, university, list of chat rooms etc. */
-        if (this.userLoggedIn()) {
-            db.ref(`users/${this.state.username}`).once('value').then(snapshot => {
-                const data = snapshot.val()
+    executeOnFriendAddition(usernameAdded) {
+        /* Child component will exec this function once a contact has been added. */
+        const message = `${usernameAdded} kullanıcısına istek yolladık!`
+        createNotification(message)
+        // this.setState({friendAdditionSnackbar: {
+        //     show: true,
+        //     message: message
+        // }})    
+    }
 
-                let chats = []
+    async setupListenersForMessages(chatgroups) {
+        for (let idx=0; idx < chatgroups.length; idx++) {
+            await db.ref(`messages/${chatgroups[idx]}`).orderByChild('timestamp').startAt(Date.now()).on('child_added', snapshot => {
+                if (snapshot.exists()) {
+                    const newMsg = snapshot.val()
+                    // Update the message list of the relevant chat group
+                    const latestMessagelist = {
+                        ...this.state.latestMessagelist,
+                        [chatgroups[idx]]: newMsg
+                    }
+
+                    this.setState({latestMessagelist: latestMessagelist})
+
+                }
+            })
+        }
+    }
+
+    async componentDidMount() {
+        /* Collect the necessary data about the user: Full name, university, list of chat rooms etc. */
+        // This doesn't work...
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                const userFromCache = JSON.parse(localStorage.getItem('kkal-user-auth'))
+                this.setState({currentUser: userFromCache})
+            }
+            else {
+                this.setState({currentUser: user})
+            }
+        })
+
+        if (this.state.currentUser) {
+            // Fetch information from database upon entry
+            await this.fetchContactsAndChats()
+
+            db.ref(`users/${this.state.currentUser.displayName}/notifications`).orderByChild('timestamp').on('value', snapshot => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val()
+                    const notifications = Object.values(data).sort((a,b) => (b.timestamp - a.timestamp)) // Sort notifications by datetime
+                    this.setState({notifications: notifications})
+                }
+            })
+
+            db.ref(`users/${this.state.currentUser.displayName}/loggedIn`).set(true)
+        }
+    }
+
+    async sortBasedOnLatestMsgTimestamp(chatgroups_for_fetch) {
+        /* Sorts the chat rooms (the ones we display on screen only) according to the timestamp of the latest message. */
+        let chatroomsWithTimeStamps = []
+        for (let idx=0; idx < chatgroups_for_fetch.length; idx++) {
+            await db.ref(`rooms/${chatgroups_for_fetch[idx]}/latestMsgTime`).once('value', snapshot => {
+                if (snapshot.exists()) {
+                    const timestamp = snapshot.val()
+                    chatroomsWithTimeStamps.push({
+                        roomName: chatgroups_for_fetch[idx],
+                        timestamp: timestamp
+                    })
+                }
+            })
+        }
+        // Sort the chat groups based on the timestamp of the latest message
+        chatroomsWithTimeStamps = chatroomsWithTimeStamps.sort((a,b) => b.timestamp - a.timestamp)
+
+        // Return the sorted list of chat group names
+        return chatroomsWithTimeStamps.map(obj => obj.roomName)
+
+    }
+
+    async fetchLatestMessages(chatgroups_for_fetch) {
+        /* Fetch latest messages for the grorups we display to the user. */
+        let latestMessages = {}
+        for (let idx=0; idx < chatgroups_for_fetch.length; idx++) {
+            await db.ref(`messages/${chatgroups_for_fetch[idx]}`).orderByChild('timestamp').limitToLast(1).once('value', snapshot => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val()
+                    latestMessages[chatgroups_for_fetch[idx]] = Object.values(data)[0] 
+                }
+            })
+        }
+        return latestMessages
+    }
+
+    async fetchContactsAndChats(maxChatGroups=5, maxMsgNum=50) {
+        /* Helper function to update chat and contact lists upon change. */
+        if (this.state.currentUser) {
+            let chatRoomList = []
+            let contacts = []
+            let dmChannels = []
+            let notifications = []
+
+            let data = null
+
+            await db.ref(`users/${this.state.currentUser.displayName}`).once('value').then(snapshot => {
+                data = snapshot.val()
+                // Retrieve the chat groups and DM list
                 if (data.chats) {
-                    chats = Object.values(data.chats).map(item => item.name)
+                    chatRoomList = Object.keys(data.chats)
                 }
                 
-                let contacts = []
                 if (data.contacts) {
-                    contacts = Object.values(data.contacts).map(item => item.name)
+                    contacts = Object.keys(data.contacts)
+                    dmChannels = Object.values(data.contacts).map(contact => contact.dmChannel)
                 }
-                this.setState({
-                    chat_rooms: chats,
-                    contacts: contacts,
-                    name: data.name,
-                    university: data.university,
-                })
+
+                if (data.notifications) {
+                    notifications = Object.values(data.notifications).sort((a,b) => (a.timestamp - b.timestamp)) // Sort notifications by datetime    
+                }
+
+            })
+
+            // Fetch the most recent messages for up to 5 groups (can be adjusted later)
+            let chatgroups_for_fetch = chatRoomList.slice(0, maxChatGroups)
+            chatgroups_for_fetch = await this.sortBasedOnLatestMsgTimestamp(chatgroups_for_fetch)
+
+            const allChatChannels = chatgroups_for_fetch.concat(dmChannels)
+
+            const latestMessagelist = await this.fetchLatestMessages(allChatChannels)
+
+            this.setState({
+                // chat_rooms: chats,
+                chatRoomList: chatgroups_for_fetch,
+                contacts: contacts,
+                dmChannels: dmChannels,
+                latestMessagelist: latestMessagelist,
+                notifications: notifications,
+                fetching: false,
+                name: data.name,
+                university: data.university,
+            })
+
+            // For these channels, we'll setup listeners for new messages
+            await this.setupListenersForMessages(allChatChannels)
+
+        }
+    }
+
+    handleOpenDialog(dialogType) {
+        this.setState({
+            dialogs: {
+                [dialogType] : true
             }
-        )}
+        })
+    }
+
+    handleCloseDialog(dialogType) {
+        this.setState({
+            dialogs: {
+                [dialogType] : false
+            }
+        })
     }
 
     renderMainSide() {
@@ -288,38 +547,14 @@ class HomePage extends React.Component {
         const activeTabId = this.state.activeTabId;
         // Empty page if no tab is selected (initial default)
         if (activeTabId === 'group-search') {
-            return <ProfileLandingPage />
+            return <GroupSearchPage />
         }
-        // New chat group creation form
-        else if (this.state.activeTabId.includes('new')) {
-            // Need to create an additional ID "c-room-idx" for the new room being created
-            // In the database, we store each room with an ID like "c-room-idx-generated_hash" 
-            // (in addition to _id generated by mongodb)
-            // let newRoomId;
-            // if (this.state.chat_rooms.length !== 0) {
-            //     const latestId = this.state.chat_rooms[this.state.chat_rooms.length - 1].roomId
-            //     const latestIdSplit = latestId.split('-')
-            //     newRoomId = `c-room-${Number(latestIdSplit[latestIdSplit.length-2]) + 1}`
-            // }
-            // // If there are no other chat rooms present, this would be the first one with ID: "c-room-1"
-            // else {
-            //     newRoomId = "c-room-1"
-            // }
-            return (
-                <NewChatGroupDialog 
-                    show={true}
-                    username={this.state.username} 
-                    setActiveTab={this.setActiveTab} 
-                    universityOfUser={this.state.university} 
-                    contacts={this.state.contacts} 
-                    />
-            )
-        }
-        else if (this.state.activeTabId !== '') {
+        else if (activeTabId !== '') {
             return (
                 <ChatRoom 
-                    username={this.state.username}
+                    username={this.state.currentUser.displayName}
                     roomId={activeTabId}
+                    channelType={activeTabId.startsWith('dm-') ? "dm-channel" : "group-channel"}
                 />
             );
         }
@@ -330,27 +565,60 @@ class HomePage extends React.Component {
 
     render() {
         // Login needed for access to this page
-        // If we can't find the login token stored, redirect to login page
-        if (!this.userLoggedIn()) {
+        if (!this.state.currentUser) {
             return <Redirect to="/login" />
         }
-
+        // if (!this.userLoggedIn()) {
+        //     return <Redirect to="/login" />
+        // }
         return (
             <div className="home-container">
-                <HomePageHeader username={this.state.username} name={this.state.name} handleLogout={this.handleLogout}/> 
+                {/* <LoadingPage /> */}
+                <HomePageHeader 
+                        username={this.state.currentUser ? this.state.currentUser.displayName : undefined} 
+                        name={this.state.name} 
+                        notifications={this.state.notifications} 
+                        setActiveTab={this.setActiveTab}
+                        handleLogout={this.handleLogout}
+                        fetchContactsAndChats={this.fetchContactsAndChats}
+                        /> 
                 <div className="flex-container">
                     <div className="home-sidebar">
                         <LeftNavigation 
-                            chatrooms={this.state.chat_rooms} 
+                            currentUser={this.state.currentUser ? this.state.currentUser.displayName : undefined}
+                            chatrooms={this.state.chatRoomList} 
                             announcement_rooms={this.state.announcement_rooms} 
-                            contacts={this.state.contacts} 
+                            contacts={this.state.contacts}
+                            dmChannels={this.state.dmChannels}
+                            latestMessagelist={this.state.latestMessagelist} 
                             setActiveTab={this.setActiveTab} 
                             activeTabId={this.state.activeTabId}
+                            handleRemoveContact={this.handleRemoveContact}
+                            handleOpenDialog={this.handleOpenDialog}
                             />
                     </div>
                     <div className="home-main">  
                         {this.renderMainSide()}
+                        {this.state.friendAdditionSnackbar.show ? <FriendAdditionSnackbar statusMessage={this.state.friendAdditionSnackbar.message} /> : <div></div>}
+                        {/* Dialogs */}
+                        <FriendSearchDialog 
+                            show={this.state.dialogs.friendSearch}
+                            currentUser={this.state.currentUser ? this.state.currentUser.displayName : undefined} 
+                            currentContacts={this.state.contacts}
+                            handleCloseDialog={this.handleCloseDialog} 
+                            executeOnFriendAddition={this.executeOnFriendAddition} 
+                            reloadFunc={this.fetchContactsAndChats}
+                        />
+                        <NewChatGroupDialog 
+                            show={this.state.dialogs.newChatGroup}
+                            username={this.state.currentUser ? this.state.currentUser.displayName : undefined} 
+                            handleCloseDialog={this.handleCloseDialog} 
+                            universityOfUser={this.state.university} 
+                            contacts={this.state.contacts} 
+                            reloadFunc={this.fetchContactsAndChats}
+                        />
                     </div>
+                    <ToastContainer />
                 </div>
             </div>
         );

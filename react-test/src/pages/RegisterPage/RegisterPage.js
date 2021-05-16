@@ -1,6 +1,6 @@
 import React from 'react'
-import { withStyles } from '@material-ui/core/styles'
 
+import { withStyles } from '@material-ui/core/styles'
 import Avatar from '@material-ui/core/Avatar'
 import Button from '@material-ui/core/Button'
 import CssBaseline from '@material-ui/core/CssBaseline'
@@ -14,6 +14,9 @@ import Typography from '@material-ui/core/Typography'
 import Container from '@material-ui/core/Container'
 import Snackbar from '@material-ui/core/Snackbar'
 import CircularProgress from '@material-ui/core/CircularProgress'
+import Select from '@material-ui/core/Select'
+import MenuItem from '@material-ui/core/MenuItem'
+import InputLabel from '@material-ui/core/InputLabel'
 
 import Autocomplete from '@material-ui/lab/Autocomplete'
 import MuiAlert from '@material-ui/lab/Alert'
@@ -22,8 +25,16 @@ import LockOutlinedIcon from '@material-ui/icons/LockOutlined'
 
 import HomePageHeader from '../HomePage/components/HomePageHeader'
 
-import { signup } from '../../helpers/auth'
-import { db } from '../../services/firebase'
+import { db, auth } from '../../services/firebase'
+import { FormControl } from '@material-ui/core'
+
+// Object to convert the e-mail extension to university name
+// Using this mapping, we'll automatically fill the "university name" field
+const EXTENSION_TO_UNIVERSITY = {
+    '@boun.edu.tr' : 'Boğaziçi Üniversitesi',
+    '@ku.edu.tr' : 'Koç Üniversitesi',
+    '@bilgi.edu.tr' : 'Bilgi Üniversitesi',
+}
 
 function Copyright() {
   return (
@@ -57,6 +68,25 @@ function CustomSnackbar(props) {
                 {props.message}
             </Alert>
         </Snackbar>
+    )
+}
+
+function CustomSelect(props) {
+    return (
+        <Grid item xs={12}>
+            <FormControl fullWidth={true} variant="outlined">
+                <InputLabel>Cinsiyet</InputLabel>
+                <Select
+                    value={props.gender}
+                    onChange={props.onChange}
+                    // autoWidth={true}
+                >
+                    <MenuItem value={"Erkek"}>Erkek</MenuItem>
+                    <MenuItem value={"Kadin"}>Kadın</MenuItem>
+                    <MenuItem value={"Bos"}>Söylemek istemiyorum</MenuItem>
+                </Select>
+            </FormControl>
+        </Grid>
     )
 }
 
@@ -105,7 +135,7 @@ function CustomTextField(props) {
                     onChange={e => props.onChange(e.target.value)}
                 />
             </Grid>
-            )
+        )
     }
 }
 
@@ -118,6 +148,7 @@ function CustomAutocomplete(props) {
                     options={props.universities}
                     renderInput={(params) => <TextField {...params} variant="outlined" label="Üniversite" />}
                     onChange={(event,university) => props.setUniversity(university)}
+                    value={props.value}
                 />
             </Grid>
         )
@@ -129,6 +160,7 @@ function CustomAutocomplete(props) {
                     options={props.universities}
                     renderInput={(params) => <TextField error helperText="Lütfen bir üniversite seçin." {...params} variant="outlined" label="Üniversite" />}
                     onChange={(event,university) => props.setUniversity(university)}
+                    value={props.value}
                 />
             </Grid>
         )
@@ -160,13 +192,13 @@ const useStyles = (theme) => ({
 class RegisterPage extends React.Component {
     constructor(props) {
         super(props)
-        this.onSubmit = this.onSubmit.bind(this);
         this.state = {
             name: '', 
             surname: '', 
             username: '', 
             email: '', 
             university: '',
+            gender: '',
             formControl: false, // Checkbox at the end 
             errors: {
                 'name' : false,
@@ -197,6 +229,9 @@ class RegisterPage extends React.Component {
         this.setUsername = this.setUsername.bind(this)
         this.setPassword = this.setPassword.bind(this)
         this.setUniversity = this.setUniversity.bind(this)
+        this.setGender = this.setGender.bind(this)
+
+        this.fillUniversityFieldBasedOnEmail = this.fillUniversityFieldBasedOnEmail.bind(this)
 
         this.validateName = this.validateName.bind(this)
         this.validateSurname = this.validateSurname.bind(this)
@@ -235,6 +270,12 @@ class RegisterPage extends React.Component {
         this.setState({email: val})
         const nowValid = val.endsWith('edu.tr') && val.includes('@')
         this.checkRemoveError("email", nowValid)
+
+        // Automatically fill the university field, using info from the e-mail
+        if (val.endsWith('.edu.tr') || val.trim() === '') {
+            this.fillUniversityFieldBasedOnEmail(val)
+        }
+
     }
     setUsername(val) {
         this.setState({username: val})
@@ -249,6 +290,25 @@ class RegisterPage extends React.Component {
         this.setState({university: val})
         const nowValid = this.universities.includes(val)
         this.checkRemoveError("university", nowValid)
+    }
+    setGender(event) {
+        this.setState({gender: event.target.value})
+    }
+
+    fillUniversityFieldBasedOnEmail(userEmail) {
+        // When the e-mail input is set, automatically fill the university field.
+        if (userEmail.trim() === '') {
+            return this.setState({university: ''})
+        }
+        const mailRegex = /@\w+.edu.tr/g
+
+        try {
+            const emailExtension = userEmail.match(mailRegex)[0]
+            this.setState({university: EXTENSION_TO_UNIVERSITY[emailExtension]})
+        } catch (error) {
+            // Need to configure this, for now do nothing
+            return
+        }
     }
 
     // ======================
@@ -277,7 +337,8 @@ class RegisterPage extends React.Component {
     }
     validateEmail() {
         // Valid e-mail format: Ends with .edu.tr
-        const valid = this.state.email ? this.state.email.endsWith('edu.tr') && this.state.email.includes('@') : false
+        // const valid = this.state.email ? this.state.email.endsWith('edu.tr') && this.state.email.includes('@') : false
+        const valid = this.state.email ? this.state.email.includes('@') : false
         if (!valid) {
             this.setState({errors: {...this.state.errors, 'email' : true}})
         }
@@ -318,7 +379,7 @@ class RegisterPage extends React.Component {
         return true
     }
 
-    onSubmit(e) {
+    async onSubmit(e) {
         e.preventDefault()
         
         // Validate input data
@@ -346,7 +407,7 @@ class RegisterPage extends React.Component {
 
         // First, check if a username already exists (can be optimized later)
         let validusername = true
-        db.ref('users').get().then(snapshot => {
+        await db.ref('users').get().then(snapshot => {
             snapshot.forEach(data => {
                 if (data.val()['username'] === this.state.username) {
                     let statusMessage = `Maalesef ${this.state.username} alınmış, başka bir kullanıcı ismi dene!`    
@@ -360,61 +421,36 @@ class RegisterPage extends React.Component {
             return
         }
 
-        db.ref(`/users/${this.state.username}`).set({
-            name       : `${this.state.name} ${this.state.surname}`,
-            email      : this.state.email,
-            username   : this.state.username,
-            password   : this.state.password,
-            university : this.state.university,
-            contacts   : {'_init': true},
-            chats      : {'_init': true}
+        let userId = null
+
+        await auth.createUserWithEmailAndPassword(this.state.email, this.state.password).then(userCredential => {
+            const user = userCredential.user
+            userId = user.uid
+            // Update the user data with username
+            user.updateProfile({
+                displayName: this.state.username,
+            })
+        })
+        .catch(error => {
+            return this.setState({statusMessage: error.message, statusSeverity: "error"})
+        })
+        
+        // Separately, record the user data in firebase database
+        await db.ref(`users/${this.state.username}`).set({
+            name: `${this.state.name} ${this.state.surname}`,
+            username: this.state.username,
+            university: this.state.university,
+            gender: this.state.gender,
+            uid: userId,
         }, (error) => {
             if (error) {
-                let statusMessage = 'Bir sunucu hatası oldu!'
-                this.setState({statusMessage: statusMessage, statusSeverity: "error", ...stateUpdate})
+                this.setState({statusMessage: error.message, statusSeverity: "error", ...stateUpdate})
             }
             else {
                 let statusMessage = `Hesabın oluşturuldu ${this.state.username}! Giriş yapmak için buraya tıkla.`
                 this.setState({statusMessage: statusMessage, statusSeverity: "success", ...stateUpdate})
             }
         })
-
-        // const ENDPOINT = '/api/users'
-
-        // const body = {
-        //     name       : `${this.state.name} ${this.state.surname}`,
-        //     email      : this.state.email,
-        //     username   : this.state.username,
-        //     password   : this.state.password,
-        //     university : this.state.university,
-        // }
-
-        // fetch(ENDPOINT, {
-        //     method: 'POST',
-        //     body: JSON.stringify(body),
-        //     headers: {
-        //         'Content-Type' : 'application/json',
-        //         'Accept' : 'appplication/json'
-        //     }
-        // })
-        // .then(async response => {
-        //     // The status message we'll display to the user
-        //     let statusMessage
-        //     const stateUpdate = {snackbarOpen: true, submissionInProgress: false}
-        //     if (response.status === 201) {
-        //         const jsonResponse = await response.json();
-        //         statusMessage = `Hesabın oluşturuldu ${jsonResponse.username}! Giriş yapmak için buraya tıkla.`
-        //         this.setState({statusMessage: statusMessage, statusSeverity: "success", ...stateUpdate})
-        //     }
-        //     else if (response.status === 400) {
-        //         statusMessage = `Maalesef ${body.username} alınmış, başka bir kullanıcı ismi dene!`
-        //         this.setState({statusMessage: statusMessage, statusSeverity: "warning", ...stateUpdate})
-        //     }
-        //     else {
-        //         statusMessage = 'Bir sunucu hatası oldu!'
-        //         this.setState({statusMessage: statusMessage, statusSeverity: "error", ...stateUpdate})
-        //     }    
-        // })
     }
 
     render() {
@@ -436,10 +472,27 @@ class RegisterPage extends React.Component {
                             <CustomTextField error={this.state.errors.name} small id="firstName" label="İsim" name="firstName" onChange={this.setName} />
                             <CustomTextField error={this.state.errors.surname} small id="lastName" label="Soyisim" name="lastName" onChange={this.setSurname} />
                             <CustomTextField error={this.state.errors.email} id="email" label="xxx@xxx.edu.tr" name="email" autoComplete="email" onChange={this.setEmail} />
+                            {/* <CustomAutocomplete 
+                                    value={this.state.university}
+                                    error={this.state.errors.university} 
+                                    universities={this.universities} 
+                                    setUniversity={this.setUniversity} /> */}
+                            
+                            <Grid item xs={12}>
+                                <TextField 
+                                    label="Üniversite"
+                                    value={this.state.university}
+                                    disabled={true}
+                                    placeholder="Üniversite"
+                                    variant="outlined"
+                                    fullWidth
+                                />
+                            </Grid>
+
                             <CustomTextField error={this.state.errors.username} id="username" label="Kullanıcı adı" name="username" autoComplete="username" onChange={this.setUsername} />
                             <CustomTextField error={this.state.errors.password} password id="password" label="Şifre" name="password" autoComplete="current-password" onChange={this.setPassword} />
                             
-                            <CustomAutocomplete error={this.state.errors.university} universities={this.universities} setUniversity={this.setUniversity} />
+                            <CustomSelect gender={this.state.gender} onChange={this.setGender} />
                             <Grid item xs={12}>
                                 <FormControlLabel
                                     control={<Checkbox required color="primary" />}

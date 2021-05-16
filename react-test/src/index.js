@@ -41,9 +41,9 @@ class Main extends React.Component {
             <Route path="/login">
               <LoginPage getToken={this.getToken} setToken={this.setToken} />
             </Route>
-            <Route path="/admin">
+            {/* <Route path="/admin">
               <AdminPage getToken={this.getToken} />
-            </Route>
+            </Route> */}
           </Switch>
         </div>
       </Router>

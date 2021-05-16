@@ -17,7 +17,7 @@ h2.sectionOne-title {
 #sectionTwo {
     text-align: center;
     float: left;
-    margin-left: 12em;
+    margin-left: 8em;
     margin-top: 80px;
     width: 35%;
 }
@@ -25,6 +25,22 @@ h2.sectionOne-title {
 h2.sectionTwo-title {
     text-align: center;
     float: left;
+    font-weight: bold;
+    font-size: 40px;
+    width: 100%;
+}
+
+#sectionThree {
+    text-align: center;
+    float: right;
+    margin-right: 100px;
+    margin-top: 180px;
+    width: 35%;
+}
+
+h2.sectionThree-title {
+    text-align: center;
+    float: right;
     font-weight: bold;
     font-size: 40px;
     width: 100%;
@@ -38,5 +54,18 @@ p.desc {
 #img1 {
     width: 50em;
     padding: 60px;
-    border-radius: 50%;
+    border-radius: 40%;
+}
+
+#img2 {
+    width: 50em;
+    padding: 10px;
+    margin-left: 75px;
+    border-radius: 40%;
+}
+
+#img3 {
+    width: 50em;
+    padding: 60px;
+    border-radius: 40%;
 }

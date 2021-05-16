@@ -1,4 +1,4 @@
-@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css');
+/* @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'); */
 
 html, body {
     height: 100%;
@@ -135,53 +135,4 @@ div.main-room-header {
 
 div.main-room-header h2:hover {
     cursor: pointer;
-}
-
-/* Settings button: Placed realative to main room header */
-div.settings-div {
-    position: absolute;
-    right: 26px;
-    top: 20px;
-}
-
-button.settings-dropdown-btn {
-    font-size: 20px;
-    padding: 5px;
-    border-radius: 5px;
-    border: none;
-    background-color: #949494;
-    color: white;
-    display: inline-block;
-}
-
-button.settings-dropdown-btn:hover {
-    cursor: pointer;
-    background-color: rgb(0, 182, 255);
-}
-
-div.dropdown-content {
-    display: none;
-    margin: 5px 0;
-    background-color: #f1f1f1;
-    position: absolute;
-    right: 0;
-    min-width: 16em;
-    z-index: 1;
-}
-
-div.dropdown-content a {
-    color: black;
-    text-decoration: none;
-    padding: 10px;
-    display: block;
-    text-align: left;
-}
-
-div.dropdown-content a:hover {
-    background-color: #ddd;
-    cursor: pointer;
-}
-
-div.dropdown-show {
-    display: block;
 }

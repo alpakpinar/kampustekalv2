@@ -1,9 +1,0 @@
-div.search-area-container {
-    margin: auto;
-    width: 50%;
-}
-
-/* Workaround to remove additional input box appearing for some reason? */
-#group-search-box {
-    border: 0px solid black;
-}

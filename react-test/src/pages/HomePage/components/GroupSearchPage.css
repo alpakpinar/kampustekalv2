@@ -1,0 +1,35 @@
+.ais-SearchBox {
+    margin: 1em 0;
+}
+  
+.ais-Pagination {
+    margin-top: 1em;
+}
+  
+.ais-InstantSearch {
+    max-width: 60%;
+    overflow: auto;
+    margin: 0 auto;
+}
+  
+.ais-Hits-item {
+    margin-bottom: 1em;
+    width: calc(50% - 1rem);
+}
+
+.hit-name {
+    margin-bottom: 0.5em;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.hit-roomtype {
+    margin-bottom: 0.5em;
+    font-size: 16px;
+}
+
+.hit-description {
+    color: #888;
+    font-size: 16px;
+    margin-bottom: 0.5em;
+}

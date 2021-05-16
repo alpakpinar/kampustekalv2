@@ -1,5 +1,5 @@
 import React from 'react'
-import './UsernameContainer.css'
+// import './UsernameContainer.css'
 import Avatar from '@material-ui/core/Avatar'
 
 class UsernameContent extends React.Component {

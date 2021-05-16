@@ -1,7 +1,11 @@
 import React from 'react'
-import './RightSidebar.css'
+import { makeStyles, withStyles } from '@material-ui/core/styles'
 
+import Box from '@material-ui/core/Box'
+import Badge from '@material-ui/core/Badge'
+import Tooltip from '@material-ui/core/Tooltip'
 import Avatar from '@material-ui/core/Avatar'
+import Typography from '@material-ui/core/Typography'
 import List from '@material-ui/core/List'
 import ListItem from '@material-ui/core/ListItem'
 import ListItemIcon from '@material-ui/core/ListItemIcon'
@@ -9,6 +13,38 @@ import ListItemText from '@material-ui/core/ListItemText'
 import Menu from '@material-ui/core/Menu'
 import MenuItem from '@material-ui/core/MenuItem'
 import ListSubheader from '@material-ui/core/ListSubheader'
+
+const USER_ONLINE_COLOR = '#44b700'
+const USER_OFFLINE_COLOR = '#ffc400'
+
+const StyledBadge = withStyles((theme) => ({
+    badge: {
+      backgroundColor: USER_ONLINE_COLOR,
+      color: USER_ONLINE_COLOR,
+      boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
+      '&::after': {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        borderRadius: '50%',
+        // content: '',
+        // animation: '$ripple 1.2s infinite ease-in-out',
+        // border: '1px solid currentColor',
+        },
+    },
+    // '@keyframes ripple': {
+    //   '0%': {
+    //     transform: 'scale(.8)',
+    //     opacity: 1,
+    //   },
+    //   '100%': {
+    //     transform: 'scale(2.4)',
+    //     opacity: 0,
+    //   },
+    // },
+  }))(Badge)
 
 class UserMenu extends React.Component {
     render() {
@@ -70,28 +106,43 @@ class RightSidebar extends React.Component {
 
     renderContacts() {
         return this.props.contacts.map(contact => {
-            const username = contact.username
             return (
-                <List>
-                    <ListItem button onClick={username !== this.props.username ? this.renderUserMenu : null}>
-                        <ListItemIcon>
-                            <Avatar>{username[0].toUpperCase()}</Avatar>
-                        </ListItemIcon>
-                        <ListItemText primary={username}/>
-                    </ListItem>
-                    <UserMenu anchorForMenu={this.state.anchorForMenu} handleClose={this.handleClose} />
-                </List>
+                <ListItem button onClick={contact !== this.props.username ? this.renderUserMenu : null}>
+                    <ListItemIcon>
+                        <Tooltip title="Cevrimiçi">
+                            <StyledBadge
+                                overlap='circle'
+                                anchorOrigin={{
+                                    vertical: 'bottom',
+                                    horizontal: 'right'
+                                }}
+                                variant='dot'
+                            >
+                                <Avatar>{contact[0].toUpperCase()}</Avatar>
+                            </StyledBadge>
+                        </Tooltip>
+                    </ListItemIcon>
+                    <ListItemText primary={contact} />
+                </ListItem>
             )
         })
     }
 
     render() {
         return (
-            <div className="right-sidebar-container">
-                <div className="right-sidebar-header-container">
-                    <h2 className="right-sidebar-header">Kullanıcılar</h2>
-                </div>
-                <div className="right-sidebar-contact-list">{this.renderContacts()}</div>
+            <div>
+                <Box my={3}>
+                    <Typography color="textPrimary" variant="h5">{this.props.chatRoomName}</Typography>
+                </Box>
+                <Box my={2}>
+                    <Typography color="textPrimary" variant="h6" style={{fontWeight: "bold"}}>Kullanıcılar</Typography>
+                </Box>
+                <Box mt={2}>
+                    <List disablePadding={true}>
+                        {this.renderContacts()}
+                    </List>
+                    <UserMenu anchorForMenu={this.state.anchorForMenu} handleClose={this.handleClose} />
+                </Box>
             </div>
         )
     }
