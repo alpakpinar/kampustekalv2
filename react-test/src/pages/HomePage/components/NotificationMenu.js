@@ -1,4 +1,8 @@
 import React from 'react'
+import Moment from 'react-moment'
+import 'moment/locale/tr' // TR style date formatting
+
+import { makeStyles } from '@material-ui/core/styles'
 
 import Typography from '@material-ui/core/Typography'
 import IconButton from '@material-ui/core/IconButton'
@@ -10,9 +14,15 @@ import Button from '@material-ui/core/Button'
 import Box from '@material-ui/core/Box'
 import Link from '@material-ui/core/Link'
 
+import Card from '@material-ui/core/Card'
+import CardActions from '@material-ui/core/CardActions'
+import CardHeader from '@material-ui/core/CardHeader'
+import CardContent from '@material-ui/core/CardContent'
+
 import ListItem from '@material-ui/core/ListItem'
 import ListItemText from '@material-ui/core/ListItemText'
 import ListItemIcon from '@material-ui/core/ListItemIcon'
+import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
 
 import NotificationsIcon from '@material-ui/icons/Notifications'
 import Badge from '@material-ui/core/Badge'
@@ -22,21 +32,14 @@ import CheckIcon from '@material-ui/icons/Check'
 import firebase from 'firebase'
 import { db } from '../../../services/firebase'
 
-function displayTime(timestamp) {
-    /* Helper function to format and display time on notifications. */
-    const s = new Date(timestamp).toLocaleTimeString()
-    const timesplit = s.split(' ')
-    const [ hour, minute, second ] = timesplit[0].split(':')
-    let timeToDisplay = ''
-    if ((timesplit[1] === 'AM' && Number(hour) < 12) || (timesplit[1] === 'PM' && Number(hour) === 12)) {
-      timeToDisplay = `${hour}:${minute}`
-    }
-    else {
-      timeToDisplay = `${Number(hour)+12}:${minute}`
-    }
-    return timeToDisplay
-  }
-  
+// Calendar settings for react-moment
+const CALENDAR_SETTINGS = {
+  lastDay : '[Dün] LT',
+  sameDay : '[Bugün] LT',
+  lastWeek : 'dddd',
+  sameElse : 'l'
+}
+
 class InviteAccept extends React.Component {
       constructor(props) {
         super(props)
@@ -65,27 +68,28 @@ class InviteAccept extends React.Component {
       }
 
       render() {
-        const entryWidth = 0.9
         return (
           <ListItem>
-            <Box mr={5} width={entryWidth} display="flex">
-                <ListItemIcon>
-                    <Avatar>{this.props.contact[0].toUpperCase()}</Avatar>
-                </ListItemIcon>
-                <ListItemText>
-                    {`${this.props.contact} ile arkadaş oldun! `}
-                    <Link 
-                        component="button" 
-                        variant="body1" 
-                        onClick={this.handleOpenChat}
-                        >
-                        Mesajlaşmaya başlayın!
-                    </Link>
-                </ListItemText>
-            </Box>
-            <Box width={1-entryWidth}>
-                <Typography align='right' variant='subtitle2'>{displayTime(this.props.timestamp)}</Typography>
-            </Box>
+            <ListItemIcon>
+                <Avatar>{this.props.contact[0].toUpperCase()}</Avatar>
+            </ListItemIcon>
+            <ListItemText>
+              <Box>
+                {`${this.props.contact} ile arkadaş oldun! `}
+              </Box>
+              <Box>
+                <Link 
+                    component="button" 
+                    variant="body1" 
+                    onClick={this.handleOpenChat}
+                    >
+                    Mesajlaşmaya başlayın!
+                </Link>
+              </Box>
+            </ListItemText>
+            <ListItemSecondaryAction>
+              <Typography variant='subtitle2'><Moment calendar={CALENDAR_SETTINGS}>{this.props.timestamp}</Moment></Typography>
+            </ListItemSecondaryAction>
           </ListItem>
         )
     }
@@ -103,7 +107,6 @@ class Invite extends React.Component {
           },
           buttonStyle: {
             textTransform: "none",
-            margin: "0 10px"
           },
         }
   
@@ -212,27 +215,36 @@ class Invite extends React.Component {
 
         return (
           <ListItem>
-              <Box display="flex">
-                <Box display="flex" width={entryWidth}>
-                    <ListItemIcon>
-                        <Avatar>{this.props.contact[0].toUpperCase()}</Avatar>
-                    </ListItemIcon>
-                    {textComponentToDisplay}
-                </Box>
+            <Box display="flex" width={entryWidth}>
+                <ListItemIcon>
+                    <Avatar>{this.props.contact[0].toUpperCase()}</Avatar>
+                </ListItemIcon>
+                {textComponentToDisplay}
                 {this.props.resolved ? (
-                  <Box display="flex" width={1-entryWidth-timeStampWidth} justifyContent='center'>
-                    {/* <CheckIcon /> */}
-                  </Box>
+                  <></>
                 ) : (
-                  <Box display="flex" width={1-entryWidth-timeStampWidth} justifyContent='center'>
-                    <Button size="small" color="primary" variant="outlined" onClick={this.handleAccept} style={this.state.buttonStyle}>Kabul et!</Button>
-                    <Button size="small" color="secondary" variant="outlined" onClick={this.handleReject} style={this.state.buttonStyle}>Reddet</Button>
+                  <Box display="flex" mt={1}>
+                    <Box mx={1}>
+                      <Button size="small" variant="contained" onClick={this.handleAccept} style={this.state.buttonStyle} color="primary">
+                          <Typography variant="body2">
+                              Kabul et
+                          </Typography>
+                      </Button>
                   </Box>
-                )}
-                <Box width={timeStampWidth} ml={2} mr={2}>
-                    <Typography align='right' variant='subtitle2'>{this.props.timestamp ? displayTime(this.props.timestamp) : ""}</Typography>
+                  <Box mx={1}>
+                      <Button size="small" variant="contained" onClick={this.handleReject} style={this.state.buttonStyle} color="secondary">
+                          <Typography variant="body2">
+                              Reddet
+                          </Typography>
+                      </Button>
+                  </Box>
                 </Box>
-              </Box>
+                )}
+                    
+            </Box>
+            <ListItemSecondaryAction>
+              <Typography variant='subtitle2'><Moment calendar={CALENDAR_SETTINGS}>{this.props.timestamp}</Moment></Typography>
+            </ListItemSecondaryAction>
           </ListItem>
         )
     }
@@ -292,12 +304,19 @@ class Invite extends React.Component {
               id="notification-menu"
               style={{
                 marginTop: "40px",
-                // width: 500
               }}
               anchorEl={this.state.anchorEl}
               open={Boolean(this.state.anchorEl)}
               onClose={this.handleClose}
             >
+              <MenuItem>
+                  <Box mb={1}>
+                    <Typography variant="body1" color="textPrimary" style={{fontWeight: "bold"}}>
+                        Bildirimlerin
+                    </Typography>
+                    </Box>
+                </MenuItem>
+              <Divider />
               {this.props.notifications.length !== 0 ? 
               this.props.notifications.map(notification => {
                 if (notification.type === 'user-invitation') {
@@ -314,7 +333,7 @@ class Invite extends React.Component {
                             handleClose={this.handleClose}
                             fetchContactsAndChats={this.props.fetchContactsAndChats}
                             />
-                        <Divider />
+                        <Divider light={true} />
                     </Box>
                     )
                 }
@@ -329,7 +348,7 @@ class Invite extends React.Component {
                             handleClose={this.handleClose}
                             fetchContactsAndChats={this.props.fetchContactsAndChats}
                             />
-                        <Divider />
+                        <Divider light={true} />
                     </Box>
                     )
                 }

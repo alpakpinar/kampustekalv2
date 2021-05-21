@@ -39,6 +39,21 @@ import { createNotification } from '../../helpers/createNotification'
 
 import { db, auth } from '../../services/firebase'
 
+function returnSortedNotifications(notificationList) {
+    // Helper function to read the list of notifications from data fetched from Firebase.
+    // And return the list of sorted notifications
+    return notificationList.sort((a,b) => (b.timestamp - a.timestamp))
+}
+
+async function fetchNotificationsAndSetupListener(username, limitToLast=10) {
+    // Read the list of notifications from Firebase DB and set up listener for any incoming notification
+    let notificationList = []
+    await db.ref(`users/${username}/notifications`).limitToLast(limitToLast).on('child_added', data => {
+        notificationList.push(data.val())
+    })
+    return returnSortedNotifications(notificationList)
+}
+
 class NestedList extends React.Component {
     /* Reusable nested/collapsable list for left-hand side navigation bar. */
     constructor(props) {
@@ -421,17 +436,12 @@ class HomePage extends React.Component {
         })
 
         if (this.state.currentUser) {
-            // Fetch information from database upon entry
+            // Fetch information from database upon entry:
+            // Chat groups, contacts, list of notifications
+            // Let's download these once when the home page mounts and not deal with them multiple times.  
             await this.fetchContactsAndChats()
 
-            db.ref(`users/${this.state.currentUser.displayName}/notifications`).orderByChild('timestamp').on('value', snapshot => {
-                if (snapshot.exists()) {
-                    const data = snapshot.val()
-                    const notifications = Object.values(data).sort((a,b) => (b.timestamp - a.timestamp)) // Sort notifications by datetime
-                    this.setState({notifications: notifications})
-                }
-            })
-
+            // Update user's login status in the database 
             db.ref(`users/${this.state.currentUser.displayName}/loggedIn`).set(true)
         }
     }
@@ -459,7 +469,7 @@ class HomePage extends React.Component {
     }
 
     async fetchLatestMessages(chatgroups_for_fetch) {
-        /* Fetch latest messages for the grorups we display to the user. */
+        /* Fetch latest messages for the groups we display to the user (to be used in the left navigation part). */
         let latestMessages = {}
         for (let idx=0; idx < chatgroups_for_fetch.length; idx++) {
             await db.ref(`messages/${chatgroups_for_fetch[idx]}`).orderByChild('timestamp').limitToLast(1).once('value', snapshot => {
@@ -482,6 +492,10 @@ class HomePage extends React.Component {
 
             let data = null
 
+            // Load the notifications (by default, the last 10 will be downloaded)
+            notifications = await fetchNotificationsAndSetupListener(this.state.currentUser.displayName)
+
+            // Then load chats and contacts
             await db.ref(`users/${this.state.currentUser.displayName}`).once('value').then(snapshot => {
                 data = snapshot.val()
                 // Retrieve the chat groups and DM list
@@ -494,10 +508,6 @@ class HomePage extends React.Component {
                     dmChannels = Object.values(data.contacts).map(contact => contact.dmChannel)
                 }
 
-                if (data.notifications) {
-                    notifications = Object.values(data.notifications).sort((a,b) => (a.timestamp - b.timestamp)) // Sort notifications by datetime    
-                }
-
             })
 
             // Fetch the most recent messages for up to 5 groups (can be adjusted later)
@@ -508,6 +518,7 @@ class HomePage extends React.Component {
 
             const latestMessagelist = await this.fetchLatestMessages(allChatChannels)
 
+            // Update the state of the home page component with all the info we have
             this.setState({
                 // chat_rooms: chats,
                 chatRoomList: chatgroups_for_fetch,
