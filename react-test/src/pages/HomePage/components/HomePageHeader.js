@@ -3,8 +3,6 @@ import React from 'react'
 
 import { makeStyles } from '@material-ui/core/styles'
 
-import Notifications from "react-notifications-menu"
-
 import AppBar from '@material-ui/core/AppBar'
 import Toolbar from '@material-ui/core/Toolbar'
 import Typography from '@material-ui/core/Typography'
@@ -21,9 +19,6 @@ import Box from '@material-ui/core/Box'
 import Link from '@material-ui/core/Link'
 
 import NotificationMenu from './NotificationMenu'
-
-import firebase from 'firebase'
-import { db } from '../../../services/firebase'
 
 const useStyles = makeStyles((theme) => ({
     root: {
