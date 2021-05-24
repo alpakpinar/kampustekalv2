@@ -39,21 +39,6 @@ import { createNotification } from '../../helpers/createNotification'
 
 import { db, auth } from '../../services/firebase'
 
-function returnSortedNotifications(notificationList) {
-    // Helper function to read the list of notifications from data fetched from Firebase.
-    // And return the list of sorted notifications
-    return notificationList.sort((a,b) => (b.timestamp - a.timestamp))
-}
-
-async function fetchNotificationsAndSetupListener(username, limitToLast=10) {
-    // Read the list of notifications from Firebase DB and set up listener for any incoming notification
-    let notificationList = []
-    await db.ref(`users/${username}/notifications`).limitToLast(limitToLast).on('child_added', data => {
-        notificationList.push(data.val())
-    })
-    return returnSortedNotifications(notificationList)
-}
-
 class NestedList extends React.Component {
     /* Reusable nested/collapsable list for left-hand side navigation bar. */
     constructor(props) {
@@ -303,7 +288,6 @@ class HomePage extends React.Component {
             chatRoomList: [], // Initially empty, to be fetched from the database and updated as page loads
             contacts: [], // Initially empty, to be fetched from the database and updated as page loads
             dmChannels: [], // Initially empty, to be fetched from the database and updated as page loads
-            notifications: [],
             fetching: true,
             // announcement_rooms: [
             //     "Staj", 
@@ -488,12 +472,8 @@ class HomePage extends React.Component {
             let chatRoomList = []
             let contacts = []
             let dmChannels = []
-            let notifications = []
 
             let data = null
-
-            // Load the notifications (by default, the last 10 will be downloaded)
-            notifications = await fetchNotificationsAndSetupListener(this.state.currentUser.displayName)
 
             // Then load chats and contacts
             await db.ref(`users/${this.state.currentUser.displayName}`).once('value').then(snapshot => {
@@ -525,7 +505,6 @@ class HomePage extends React.Component {
                 contacts: contacts,
                 dmChannels: dmChannels,
                 latestMessagelist: latestMessagelist,
-                notifications: notifications,
                 fetching: false,
                 name: data.name,
                 university: data.university,
@@ -588,7 +567,6 @@ class HomePage extends React.Component {
                 <HomePageHeader 
                         username={this.state.currentUser ? this.state.currentUser.displayName : undefined} 
                         name={this.state.name} 
-                        notifications={this.state.notifications} 
                         setActiveTab={this.setActiveTab}
                         handleLogout={this.handleLogout}
                         fetchContactsAndChats={this.fetchContactsAndChats}

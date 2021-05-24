@@ -249,8 +249,8 @@ const NotificationMenu = (props) => {
   const [anchorEl, setAnchorEl] = React.useState(null)
 
   const username = props.username
-  // Limit to last 10 notifications while fetching
-  const limitToLast = 10
+  // Limit to last 5 notifications while fetching
+  const limitToLast = 5
 
   const handleMenu = (event) => {
     setAnchorEl(event.target)
@@ -275,6 +275,10 @@ const NotificationMenu = (props) => {
       return list.filter(notification => !notification.readByRecipient).length
   }
 
+  const sortNotificationsByTimestamp = (list) => {
+      list.sort((a,b) => (b.timestamp - a.timestamp))
+  }
+
   let notificationList = []
 
   useEffect(() => {
@@ -284,6 +288,7 @@ const NotificationMenu = (props) => {
 
   // If notifications are updated, update the component
   if (notificationList.length !== notifications.length) {
+      sortNotificationsByTimestamp(notificationList)
       setNotifications(notificationList)
       setNumNotifications(
         getNumberOfUnreadNotifications(notificationList)
